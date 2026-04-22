@@ -18,8 +18,7 @@ class Node:
 
     # returns whether this is a terminal state (i.e., no children)
     def is_terminal(self):
-        #TODO: complete this
-        pass
+        return len(self.children) == 0
 
 # AI agent. Determine the next move.
 class AI:
@@ -34,14 +33,57 @@ class AI:
 
     # TODO: build a game tree from the current node up to the given depth
     def build_tree(self, node = None, depth = 0):
-        pass
+        if node is None:
+            node = self.root
+
+        if depth == 0:
+            return
+
+        self.simulator.set_state(*node.state)
+
+        if node.player_type == MAX_PLAYER:
+            for direction in MOVES:
+                self.simulator.set_state(*node.state)
+                if self.simulator.move(direction):
+                    child = Node(self.simulator.current_state(), CHANCE_PLAYER)
+                    node.children.append((direction, child))
+                    self.build_tree(child, depth - 1)
+        else:
+            for tile in self.simulator.get_open_tiles():
+                self.simulator.set_state(*node.state)
+                self.simulator.tile_matrix[tile[0]][tile[1]] = 2
+                child = Node(self.simulator.current_state(), MAX_PLAYER)
+                node.children.append((None, child))
+                self.build_tree(child, depth - 1)
 
     # TODO: expectimax calculation.
     # Return a (best direction, expectimax value) tuple if node is a MAX_PLAYER
     # Return a (None, expectimax value) tuple if node is a CHANCE_PLAYER
     def expectimax(self, node = None):
-        # TODO: delete this random choice but make sure the return type of the function is the same
-        return random.randint(0, 3), 0
+        if node is None:
+            node = self.root
+
+        if node.is_terminal():
+            return None, node.state[1]
+
+        if node.player_type == MAX_PLAYER:
+            best_direction = None
+            best_value = float("-inf")
+
+            for direction, child in node.children:
+                _, child_value = self.expectimax(child)
+                if child_value > best_value:
+                    best_direction = direction
+                    best_value = child_value
+
+            return best_direction, best_value
+
+        total_value = 0
+        for _, child in node.children:
+            _, child_value = self.expectimax(child)
+            total_value += child_value
+
+        return None, total_value / len(node.children)
 
     # Return decision at the root
     def compute_decision(self):
@@ -52,4 +94,3 @@ class AI:
     # TODO (optional): the extension part
     def compute_decision_extension(self):
         return random.randint(0, 3)
-
